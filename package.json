@@ -1,0 +1,73 @@
+{
+  "name": "finance-app-backend",
+  "version": "1.0.0",
+  "description": "AI-powered personal finance coach backend",
+  "main": "dist/main.js",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "dev:worker": "tsx watch src/workers/worker.main.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/main.js",
+    "start:worker": "node dist/workers/worker.main.js",
+    "db:migrate": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:generate": "prisma generate",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:studio": "prisma studio",
+    "db:reset": "prisma migrate reset --force",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "format": "prettier --write \"src/**/*.ts\" \"prisma/**/*.ts\"",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@fastify/cookie": "^11.0.2",
+    "@fastify/cors": "^11.2.0",
+    "@fastify/helmet": "^13.0.2",
+    "@fastify/jwt": "^10.0.0",
+    "@fastify/multipart": "^10.0.0",
+    "@fastify/rate-limit": "^10.3.0",
+    "@fastify/swagger": "^9.7.0",
+    "@fastify/swagger-ui": "^5.2.6",
+    "@prisma/client": "^5.22.0",
+    "bullmq": "^5.13.2",
+    "decimal.js": "^10.4.3",
+    "dotenv": "^17.4.2",
+    "fastify": "^5.8.5",
+    "fastify-plugin": "^4.5.1",
+    "ioredis": "^5.4.1",
+    "jose": "^5.9.6",
+    "jsonwebtoken": "^9.0.2",
+    "luxon": "^3.5.0",
+    "pino": "^9.4.0",
+    "pino-pretty": "^11.2.2",
+    "zod": "^3.23.8",
+    "zod-to-json-schema": "^3.23.3"
+  },
+  "devDependencies": {
+    "@faker-js/faker": "^9.1.0",
+    "@testcontainers/postgresql": "^11.14.0",
+    "@types/jsonwebtoken": "^9.0.7",
+    "@types/luxon": "^3.4.2",
+    "@types/node": "^22.7.4",
+    "@typescript-eslint/eslint-plugin": "^8.8.1",
+    "@typescript-eslint/parser": "^8.8.1",
+    "@vitest/coverage-v8": "^4.1.5",
+    "eslint": "^9.12.0",
+    "eslint-config-prettier": "^9.1.0",
+    "prettier": "^3.3.3",
+    "prisma": "^5.22.0",
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.3",
+    "vitest": "^4.1.5"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  }
+}

@@ -1,0 +1,17 @@
+node_modules/
+dist/
+.env
+.env.local
+.env.*.local
+*.log
+pino*.log
+coverage/
+.nyc_output/
+.DS_Store
+Thumbs.db
+*.pem
+*.key
+
+# NOTE: prisma/migrations/ MUST be committed. `prisma migrate deploy` (run in
+# CI/CD) replays these committed migration files against the production DB.
+# Ignoring them would leave production with nothing to apply. Do not re-add.

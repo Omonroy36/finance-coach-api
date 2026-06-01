@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "lib": ["ES2022"],
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "strict": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "paths": {
+      "@/config/*": ["./src/config/*"],
+      "@/plugins/*": ["./src/plugins/*"],
+      "@/shared/*": ["./src/shared/*"],
+      "@/modules/*": ["./src/modules/*"],
+      "@/workers/*": ["./src/workers/*"]
+    }
+  },
+  "include": ["src/**/*", "prisma/seed.ts"],
+  "exclude": ["node_modules", "dist", "tests"]
+}

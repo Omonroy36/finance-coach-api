@@ -1,0 +1,62 @@
+# syntax=docker/dockerfile:1
+#
+# Dockerfile.worker — multi-stage build for the BullMQ background worker.
+#
+# Identical build pipeline to Dockerfile.api, but the runtime entrypoint starts
+# the worker process (dist/workers/worker.main.js) instead of the HTTP server.
+# The worker does NOT start Fastify and exposes no port.
+#
+# Stage 1 (builder):  install ALL deps, generate Prisma Client, compile TS -> dist/
+# Stage 2 (deps):     install PRODUCTION-only deps + regenerate Prisma Client
+# Stage 3 (runtime):  minimal node:20-slim image with only what is needed to run
+
+# ─── Stage 1: builder ────────────────────────────────────────────────────────
+FROM node:20-slim AS builder
+WORKDIR /app
+
+RUN apt-get update -y \
+  && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+
+COPY package*.json ./
+RUN npm ci
+
+COPY prisma ./prisma
+RUN npx prisma generate
+
+COPY tsconfig.json tsconfig.build.json ./
+COPY src ./src
+RUN npm run build
+
+# ─── Stage 2: production dependencies ────────────────────────────────────────
+FROM node:20-slim AS deps
+WORKDIR /app
+
+RUN apt-get update -y \
+  && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+
+COPY package*.json ./
+RUN npm ci --omit=dev && npm cache clean --force
+
+COPY prisma ./prisma
+RUN npx prisma generate
+
+# ─── Stage 3: runtime ────────────────────────────────────────────────────────
+FROM node:20-slim AS runtime
+WORKDIR /app
+ENV NODE_ENV=production
+
+RUN apt-get update -y \
+  && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+
+COPY package*.json ./
+COPY --from=deps    /app/node_modules ./node_modules
+COPY --from=builder /app/dist         ./dist
+COPY --from=builder /app/prisma       ./prisma
+
+USER node
+
+# No EXPOSE — the worker is not an HTTP service.
+CMD ["node", "dist/workers/worker.main.js"]

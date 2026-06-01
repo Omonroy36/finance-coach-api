@@ -1,0 +1,75 @@
+# syntax=docker/dockerfile:1
+#
+# Dockerfile.api — multi-stage build for the Fastify HTTP API.
+#
+# Stage 1 (builder):  install ALL deps, generate Prisma Client, compile TS -> dist/
+# Stage 2 (deps):     install PRODUCTION-only deps + regenerate Prisma Client
+# Stage 3 (runtime):  minimal node:20-slim image with only what is needed to run
+#
+# The image builds TypeScript itself — no pre-built dist/ is required on the host.
+
+# ─── Stage 1: builder ────────────────────────────────────────────────────────
+FROM node:20-slim AS builder
+WORKDIR /app
+
+# Prisma needs OpenSSL to detect/download the correct query-engine binary.
+RUN apt-get update -y \
+  && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+
+# Install full dependency tree from the lockfile (reproducible builds).
+COPY package*.json ./
+RUN npm ci
+
+# Generate Prisma Client (needs the schema). Produces types used by tsc.
+COPY prisma ./prisma
+RUN npx prisma generate
+
+# Compile TypeScript -> dist/ via `npm run build`.
+COPY tsconfig.json tsconfig.build.json ./
+COPY src ./src
+RUN npm run build
+
+# ─── Stage 2: production dependencies ────────────────────────────────────────
+# A clean node_modules with prod deps only, plus a Prisma Client built against
+# the same OpenSSL/engine as the runtime image.
+FROM node:20-slim AS deps
+WORKDIR /app
+
+RUN apt-get update -y \
+  && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+
+COPY package*.json ./
+RUN npm ci --omit=dev && npm cache clean --force
+
+COPY prisma ./prisma
+RUN npx prisma generate
+
+# ─── Stage 3: runtime ────────────────────────────────────────────────────────
+FROM node:20-slim AS runtime
+WORKDIR /app
+ENV NODE_ENV=production
+
+# OpenSSL is required at runtime by the Prisma query engine.
+RUN apt-get update -y \
+  && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+
+# Copy ONLY runtime artifacts:
+#   - package.json (for `node` + metadata)
+#   - prod node_modules (incl. generated Prisma Client) from the deps stage
+#   - compiled JS from the builder stage
+#   - prisma schema (handy for `prisma migrate deploy` / debugging)
+COPY package*.json ./
+COPY --from=deps    /app/node_modules ./node_modules
+COPY --from=builder /app/dist         ./dist
+COPY --from=builder /app/prisma       ./prisma
+
+# Run as the unprivileged built-in `node` user.
+USER node
+
+# Cloud Run injects PORT; the app reads it via process.env.PORT (default 3000).
+EXPOSE 3000
+
+CMD ["node", "dist/main.js"]

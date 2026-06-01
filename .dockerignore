@@ -1,0 +1,24 @@
+# Keep the build context small and prevent host artifacts/secrets from leaking
+# into the image. The image builds TypeScript itself, so dist/ is excluded too.
+node_modules
+dist
+coverage
+.nyc_output
+
+# Local env / secrets — never bake these into an image
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# VCS, tooling, tests, docs
+.git
+.gitignore
+.claude
+tests
+*.log
+pino*.log
+Dockerfile*
+docker-compose.yml
+*.md

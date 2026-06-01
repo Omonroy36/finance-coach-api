@@ -1,0 +1,96 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# LOCAL DEVELOPMENT ONLY.
+#
+# This Compose file spins up the full stack on a developer machine. It is NOT
+# used in production — in production Postgres/Redis are managed services (Neon /
+# Upstash) and the API/Worker run on Cloud Run. See DEPLOYMENT_READINESS.md.
+# ─────────────────────────────────────────────────────────────────────────────
+version: '3.9'
+
+services:
+  # postgres — local PostgreSQL 16 database.
+  # In production this is replaced by Neon (serverless Postgres); nothing here
+  # is deployed. Data persists in the `postgres_data` named volume.
+  postgres:
+    image: postgres:16-alpine
+    container_name: finance_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: finance_user
+      POSTGRES_PASSWORD: finance_pass
+      POSTGRES_DB: finance_db
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U finance_user -d finance_db']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # redis — local Redis 7 instance backing BullMQ queues + caching.
+  # In production this is replaced by Upstash (serverless Redis).
+  redis:
+    image: redis:7-alpine
+    container_name: finance_redis
+    restart: unless-stopped
+    command: redis-server --save 60 1 --loglevel warning
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # api — the Fastify HTTP API. Built from Dockerfile.api (multi-stage build that
+  # compiles TypeScript and generates the Prisma Client inside the image).
+  # In production this runs as a Cloud Run service.
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: finance_api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://finance_user:finance_pass@postgres:5432/finance_db?schema=public
+      REDIS_URL: redis://redis:6379
+    ports:
+      - '3000:3000'
+    env_file:
+      - .env
+
+  # worker — the BullMQ background worker. Built from Dockerfile.worker. Runs the
+  # same codebase but starts the worker process (no Fastify, no exposed port).
+  # In production this runs as a separate Cloud Run service.
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: finance_worker
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://finance_user:finance_pass@postgres:5432/finance_db?schema=public
+      REDIS_URL: redis://redis:6379
+    env_file:
+      - .env
+
+# Named volumes persist local Postgres/Redis data across `docker compose down`.
+volumes:
+  postgres_data:
+  redis_data:
