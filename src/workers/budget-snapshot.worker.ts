@@ -1,10 +1,11 @@
 import { Worker } from 'bullmq';
-import { getRedis } from '../config/redis';
+import { redisConnectionOptions } from '../config/redis';
 import { QUEUE_NAMES, getQueue } from '../config/queue';
 import type { BudgetSnapshotJobData, NotificationDispatchJobData } from '../config/queue';
 import { prisma } from '../config/database';
 import { getPeriodBounds } from '../shared/utils/date.util';
 import Decimal from 'decimal.js';
+import { config } from '../config';
 
 export function createBudgetSnapshotWorker() {
   return new Worker<BudgetSnapshotJobData>(
@@ -64,6 +65,6 @@ export function createBudgetSnapshotWorker() {
         await queue.add('notify', { notificationId: notification.id } satisfies NotificationDispatchJobData);
       }
     },
-    { connection: getRedis(), concurrency: 5 },
+    { connection: redisConnectionOptions, prefix: config.REDIS_PREFIX, concurrency: 5 },
   );
 }

@@ -7,6 +7,7 @@ import type {
   CashflowForecastJobData,
 } from '../config/queue';
 import { prisma } from '../config/database';
+import Fastify from 'fastify';
 
 // Workers
 import { createBudgetSnapshotWorker } from './budget-snapshot.worker';
@@ -57,11 +58,10 @@ async function scheduleCronJobs() {
   );
 
   // Daily at 05:00 UTC — financial score for all users
-  await scoreQueue.add(
-    'daily-score',
-    { userId: '__all__' } satisfies FinancialScoreJobData,
-    { repeat: { pattern: '0 5 * * *' }, jobId: 'cron-score-daily' },
-  );
+  await scoreQueue.add('daily-score', { userId: '__all__' } satisfies FinancialScoreJobData, {
+    repeat: { pattern: '0 5 * * *' },
+    jobId: 'cron-score-daily',
+  });
 
   // 1st of each month at 00:30 UTC — cashflow forecasts
   await forecastQueue.add(
@@ -84,7 +84,18 @@ async function main() {
   console.log('Worker process starting...');
   await scheduleCronJobs();
   console.log(`${workers.length} workers running.`);
+  const app = Fastify({ logger: true });
 
+  app.get('/health', async () => {
+    return { status: 'ok', workers: workers.length };
+  });
+
+  await app.listen({
+    port: Number(process.env.PORT || 8080),
+    host: '0.0.0.0',
+  });
+
+  console.log(`Worker health server listening on ${process.env.PORT}`);
   let shuttingDown = false;
   const shutdown = async (signal: string) => {
     // Guard against a second signal arriving mid-shutdown (e.g. Cloud Run sends
@@ -96,6 +107,7 @@ async function main() {
     // Close workers first so in-flight jobs finish and no new jobs are picked up,
     // then release the shared Redis connection, queues, and DB pool.
     await Promise.all(workers.map((w) => w.close()));
+    await app.close();
     await closeQueues();
     await prisma.$disconnect();
     await closeRedis();

@@ -1,8 +1,9 @@
 import { Worker } from 'bullmq';
-import { getRedis } from '../config/redis';
+import { redisConnectionOptions } from '../config/redis';
 import { QUEUE_NAMES } from '../config/queue';
 import type { NotificationDispatchJobData } from '../config/queue';
 import { prisma } from '../config/database';
+import { config } from '../config';
 
 export function createNotificationDispatcherWorker() {
   return new Worker<NotificationDispatchJobData>(
@@ -53,6 +54,6 @@ export function createNotificationDispatcherWorker() {
         throw err;
       }
     },
-    { connection: getRedis(), concurrency: 10 },
+    { connection: redisConnectionOptions, prefix: config.REDIS_PREFIX, concurrency: 10 },
   );
 }

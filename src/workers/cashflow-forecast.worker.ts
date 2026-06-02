@@ -1,10 +1,11 @@
 import { Worker } from 'bullmq';
-import { getRedis } from '../config/redis';
+import { redisConnectionOptions } from '../config/redis';
 import { QUEUE_NAMES } from '../config/queue';
 import type { CashflowForecastJobData } from '../config/queue';
 import { prisma } from '../config/database';
 import Decimal from 'decimal.js';
 import { DateTime } from 'luxon';
+import { config } from '../config';
 
 export function createCashflowForecastWorker() {
   return new Worker<CashflowForecastJobData>(
@@ -73,6 +74,6 @@ export function createCashflowForecastWorker() {
         });
       }
     },
-    { connection: getRedis(), concurrency: 3 },
+    { connection: redisConnectionOptions, prefix: config.REDIS_PREFIX, concurrency: 3 },
   );
 }

@@ -1,9 +1,10 @@
 import { Worker } from 'bullmq';
-import { getRedis } from '../config/redis';
+import { redisConnectionOptions } from '../config/redis';
 import { QUEUE_NAMES } from '../config/queue';
 import type { StreakEvaluatorJobData } from '../config/queue';
 import { prisma } from '../config/database';
 import { DateTime } from 'luxon';
+import { config } from '../config';
 
 export function createStreakEvaluatorWorker() {
   return new Worker<StreakEvaluatorJobData>(
@@ -61,6 +62,6 @@ export function createStreakEvaluatorWorker() {
         data: { currentCount: newCount, bestCount: newBest, lastCompletedAt: now.toJSDate() },
       });
     },
-    { connection: getRedis(), concurrency: 10 },
+    { connection: redisConnectionOptions, prefix: config.REDIS_PREFIX, concurrency: 10 },
   );
 }

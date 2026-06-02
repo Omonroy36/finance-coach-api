@@ -1,9 +1,10 @@
 import { Worker } from 'bullmq';
-import { getRedis } from '../config/redis';
+import { redisConnectionOptions } from '../config/redis';
 import { QUEUE_NAMES } from '../config/queue';
 import type { ChallengeEvaluatorJobData } from '../config/queue';
 import { prisma } from '../config/database';
 import { DateTime } from 'luxon';
+import { config } from '../config';
 
 export function createChallengeEvaluatorWorker() {
   return new Worker<ChallengeEvaluatorJobData>(
@@ -63,6 +64,6 @@ export function createChallengeEvaluatorWorker() {
         }
       }
     },
-    { connection: getRedis(), concurrency: 5 },
+    { connection: redisConnectionOptions, prefix: config.REDIS_PREFIX, concurrency: 5 },
   );
 }

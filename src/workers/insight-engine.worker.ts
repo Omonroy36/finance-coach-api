@@ -1,10 +1,11 @@
 import { Worker } from 'bullmq';
-import { getRedis } from '../config/redis';
+import { redisConnectionOptions } from '../config/redis';
 import { QUEUE_NAMES, getQueue } from '../config/queue';
 import type { InsightEngineJobData, RecommendationJobData } from '../config/queue';
 import { prisma } from '../config/database';
 import Decimal from 'decimal.js';
 import { DateTime } from 'luxon';
+import { config } from '../config';
 
 export function createInsightEngineWorker() {
   return new Worker<InsightEngineJobData>(
@@ -90,6 +91,6 @@ export function createInsightEngineWorker() {
       const recQueue = getQueue(QUEUE_NAMES.RECOMMENDATION);
       await recQueue.add('recommend', { userId } satisfies RecommendationJobData);
     },
-    { connection: getRedis(), concurrency: 3 },
+    { connection: redisConnectionOptions, prefix: config.REDIS_PREFIX, concurrency: 3 },
   );
 }

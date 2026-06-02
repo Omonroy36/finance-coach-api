@@ -1,8 +1,9 @@
 import { Worker } from 'bullmq';
-import { getRedis } from '../config/redis';
+import { redisConnectionOptions } from '../config/redis';
 import { QUEUE_NAMES, getQueue } from '../config/queue';
 import type { TransactionCategorizerJobData, BudgetSnapshotJobData, InsightEngineJobData } from '../config/queue';
 import { prisma } from '../config/database';
+import { config } from '../config';
 
 export function createTransactionCategorizerWorker() {
   return new Worker<TransactionCategorizerJobData>(
@@ -64,6 +65,6 @@ export function createTransactionCategorizerWorker() {
       const insightQueue = getQueue(QUEUE_NAMES.INSIGHT_ENGINE);
       await insightQueue.add('insight', { userId, triggerType: 'transaction' } satisfies InsightEngineJobData);
     },
-    { connection: getRedis(), concurrency: 10 },
+    { connection: redisConnectionOptions, prefix: config.REDIS_PREFIX, concurrency: 10 },
   );
 }

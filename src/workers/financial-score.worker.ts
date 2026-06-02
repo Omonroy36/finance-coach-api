@@ -1,10 +1,11 @@
 import { Worker } from 'bullmq';
-import { getRedis } from '../config/redis';
+import { redisConnectionOptions } from '../config/redis';
 import { QUEUE_NAMES } from '../config/queue';
 import type { FinancialScoreJobData } from '../config/queue';
 import { prisma } from '../config/database';
 import Decimal from 'decimal.js';
 import { DateTime } from 'luxon';
+import { config } from '../config';
 
 const WEIGHTS = {
   budgetAdherence: 0.30,
@@ -88,6 +89,6 @@ export function createFinancialScoreWorker() {
         },
       });
     },
-    { connection: getRedis(), concurrency: 3 },
+    { connection: redisConnectionOptions, prefix: config.REDIS_PREFIX, concurrency: 3 },
   );
 }

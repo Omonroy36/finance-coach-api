@@ -1,9 +1,10 @@
 import { Worker } from 'bullmq';
-import { getRedis } from '../config/redis';
+import { redisConnectionOptions } from '../config/redis';
 import { QUEUE_NAMES, getQueue } from '../config/queue';
 import type { AccountSyncJobData, TransactionCategorizerJobData, InsightEngineJobData } from '../config/queue';
 import { prisma } from '../config/database';
 import { decrypt } from '../shared/utils/crypto.util';
+import { config } from '../config';
 
 export function createAccountSyncWorker() {
   return new Worker<AccountSyncJobData>(
@@ -67,6 +68,6 @@ export function createAccountSyncWorker() {
       const insightQueue = getQueue(QUEUE_NAMES.INSIGHT_ENGINE);
       await insightQueue.add('insight', { userId, triggerType: 'scheduled' } satisfies InsightEngineJobData);
     },
-    { connection: getRedis(), concurrency: 3 },
+    { connection: redisConnectionOptions, prefix: config.REDIS_PREFIX, concurrency: 3 },
   );
 }
