@@ -77,13 +77,13 @@ async function scheduleCronJobs() {
     { repeat: { pattern: '0 6 * * *' }, jobId: 'cron-account-sync-daily' },
   );
 
-  console.log('Cron jobs scheduled.');
+  console.warn('Cron jobs scheduled.');
 }
 
 async function main() {
-  console.log('Worker process starting...');
+  console.warn('Worker process starting...');
   await scheduleCronJobs();
-  console.log(`${workers.length} workers running.`);
+  console.warn(`${workers.length} workers running.`);
   const app = Fastify({ logger: true });
 
   app.get('/health', async () => {
@@ -95,7 +95,7 @@ async function main() {
     host: '0.0.0.0',
   });
 
-  console.log(`Worker health server listening on ${process.env.PORT}`);
+  console.warn(`Worker health server listening on ${process.env.PORT}`);
   let shuttingDown = false;
   const shutdown = async (signal: string) => {
     // Guard against a second signal arriving mid-shutdown (e.g. Cloud Run sends
@@ -103,7 +103,7 @@ async function main() {
     if (shuttingDown) return;
     shuttingDown = true;
 
-    console.log(`Received ${signal}, shutting down workers...`);
+    console.warn(`Received ${signal}, shutting down workers...`);
     // Close workers first so in-flight jobs finish and no new jobs are picked up,
     // then release the shared Redis connection, queues, and DB pool.
     await Promise.all(workers.map((w) => w.close()));
@@ -111,7 +111,7 @@ async function main() {
     await closeQueues();
     await prisma.$disconnect();
     await closeRedis();
-    console.log('Worker shutdown complete.');
+    console.warn('Worker shutdown complete.');
     process.exit(0);
   };
 
