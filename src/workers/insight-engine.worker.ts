@@ -16,7 +16,6 @@ export function createInsightEngineWorker() {
       const thisMonthStart = now.startOf('month').toJSDate();
       const thisMonthEnd = now.endOf('month').toJSDate();
       const lastMonthStart = now.minus({ months: 1 }).startOf('month').toJSDate();
-      const lastMonthEnd = now.minus({ months: 1 }).endOf('month').toJSDate();
 
       // Rule 1: SpendingSpike — current month vs last 3-month average
       const [currentSpend, prev3MonthSpend] = await Promise.all([
