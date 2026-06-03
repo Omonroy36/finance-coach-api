@@ -5,6 +5,7 @@ import { encrypt } from '../../shared/utils/crypto.util';
 import type { CreateAccountInput, UpdateAccountInput, CreateCategoryInput } from './accounts.schemas';
 import { getQueue, QUEUE_NAMES } from '../../config/queue';
 import type { AccountSyncJobData } from '../../config/queue';
+import * as fintoc from '../../shared/utils/fintoc.client';
 
 export class AccountsService {
   private repo = new AccountsRepository();
@@ -35,32 +36,56 @@ export class AccountsService {
     await this.repo.softDelete(accountId);
   }
 
-  // Integrations
+  // ─── Fintoc Integrations ───────────────────────────────────────────────────
+
   async listConnections(userId: string) {
     return this.repo.listConnections(userId);
   }
 
-  async exchangePlaidToken(
-    userId: string,
-    publicToken: string,
-    meta: { institutionId?: string; institutionName?: string },
-  ) {
-    // TODO: call Plaid /item/public_token/exchange → get access_token
-    const mockAccessToken = `access-sandbox-${publicToken}`;
-    const encryptedAccessToken = encrypt(mockAccessToken);
+  /**
+   * Step 1: Create a Fintoc Link Intent → returns widget_token for the frontend.
+   */
+  async createLinkIntent(options?: { country?: 'cl' | 'mx'; holderType?: 'individual' | 'business' }) {
+    const linkIntent = await fintoc.createLinkIntent({
+      country: options?.country,
+      holder_type: options?.holderType,
+    });
+    return { widgetToken: linkIntent.widget_token, linkIntentId: linkIntent.id };
+  }
+
+  /**
+   * Step 2: Exchange the temporary token from widget onSuccess → stores the link_token.
+   */
+  async exchangeFintocToken(userId: string, exchangeToken: string) {
+    const link = await fintoc.exchangeToken(exchangeToken);
+
+    const encryptedAccessToken = encrypt(link.link_token);
 
     const connection = await this.repo.createConnection({
       userId,
-      providerType: 'plaid',
+      providerType: 'fintoc',
       encryptedAccessToken,
       metadata: {
-        institutionId: meta.institutionId,
-        institutionName: meta.institutionName,
-        syncCursor: null,
+        linkId: link.id,
+        institutionId: link.institution.id,
+        institutionName: link.institution.name,
+        country: link.institution.country,
+        holderType: link.holder_type,
+        lastSyncedAt: null,
       },
     });
 
-    // Trigger initial sync
+    // Create FinancialAccount records for each bank account in the link
+    for (const acc of link.accounts ?? []) {
+      await this.repo.create(userId, {
+        type: mapFintocAccountType(acc.type),
+        providerName: link.institution.name,
+        lastFour: acc.number.slice(-4),
+        nickname: acc.name,
+      });
+    }
+
+    // Trigger initial sync of movements
     const queue = getQueue(QUEUE_NAMES.ACCOUNT_SYNC);
     await queue.add('account-sync', {
       integrationConnectionId: connection.id,
@@ -73,6 +98,16 @@ export class AccountsService {
   async deleteConnection(userId: string, connectionId: string) {
     const connection = await this.repo.findConnection(connectionId, userId);
     if (!connection) throw new NotFoundError('IntegrationConnection', connectionId);
+
+    // Revoke link at Fintoc
+    try {
+      const { decrypt } = await import('../../shared/utils/crypto.util');
+      const linkToken = decrypt(connection.encryptedAccessToken);
+      await fintoc.deleteLink(linkToken);
+    } catch {
+      // Best-effort — still revoke locally even if Fintoc call fails
+    }
+
     await this.repo.softDeleteConnection(connectionId);
   }
 
@@ -89,7 +124,8 @@ export class AccountsService {
     return { jobId: job.id };
   }
 
-  // Categories
+  // ─── Categories ─────────────────────────────────────────────────────────────
+
   async listCategories(userId: string) {
     return this.repo.listCategories(userId);
   }
@@ -108,5 +144,20 @@ export class AccountsService {
     if (!cat) throw new NotFoundError('TransactionCategory', categoryId);
     if (cat.isSystem) throw new ForbiddenError('Cannot delete system categories');
     await this.repo.softDeleteCategory(categoryId);
+  }
+}
+
+function mapFintocAccountType(fintocType: string): 'checking' | 'savings' | 'credit' | 'investment' {
+  switch (fintocType) {
+    case 'checking_account':
+    case 'sight_account':
+      return 'checking';
+    case 'savings_account':
+      return 'savings';
+    case 'credit_card':
+    case 'line_of_credit':
+      return 'credit';
+    default:
+      return 'checking';
   }
 }
