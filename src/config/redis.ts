@@ -12,8 +12,8 @@ export const redisConnectionOptions = {
 } as const;
 
 let redisInstance: Redis | null = null;
-console.log('Redis connection options:', redisConnectionOptions);
-console.log('Redis URL:', config.REDIS_URL);
+console.warn('Redis connection options:', redisConnectionOptions);
+console.warn('Redis URL:', config.REDIS_URL);
 export function getRedis(): Redis {
   if (!redisInstance) {
     redisInstance = new Redis(config.REDIS_URL, redisConnectionOptions);
