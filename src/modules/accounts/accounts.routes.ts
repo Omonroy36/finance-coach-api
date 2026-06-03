@@ -3,7 +3,8 @@ import { AccountsService } from './accounts.service';
 import {
   createAccountSchema,
   updateAccountSchema,
-  plaidExchangeSchema,
+  fintocCreateLinkIntentSchema,
+  fintocExchangeSchema,
   createCategorySchema,
   updateCategorySchema,
 } from './accounts.schemas';
@@ -40,12 +41,21 @@ export async function accountsRoutes(app: FastifyInstance) {
     return reply.status(204).send();
   });
 
-  // Integrations
+  // ─── Fintoc Integrations ──────────────────────────────────────────────────
+
   app.get('/integrations', async (request) => svc.listConnections(request.userId));
 
-  app.post('/integrations/plaid/exchange', async (request, reply) => {
-    const { publicToken, institutionId, institutionName } = plaidExchangeSchema.parse(request.body);
-    const conn = await svc.exchangePlaidToken(request.userId, publicToken, { institutionId, institutionName });
+  // Step 1: Create a link intent → frontend uses widget_token to open the Fintoc widget
+  app.post('/integrations/fintoc/link-intent', async (request, reply) => {
+    const { country, holderType } = fintocCreateLinkIntentSchema.parse(request.body);
+    const result = await svc.createLinkIntent({ country, holderType });
+    return reply.status(201).send(result);
+  });
+
+  // Step 2: Exchange the token from widget onSuccess → stores link_token, creates accounts
+  app.post('/integrations/fintoc/exchange', async (request, reply) => {
+    const { exchangeToken } = fintocExchangeSchema.parse(request.body);
+    const conn = await svc.exchangeFintocToken(request.userId, exchangeToken);
     return reply.status(201).send(conn);
   });
 
