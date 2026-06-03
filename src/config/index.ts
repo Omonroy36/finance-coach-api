@@ -27,10 +27,10 @@ const configSchema = z.object({
   APPLE_KEY_ID: z.string().optional(),
   APPLE_PRIVATE_KEY_BASE64: z.string().optional(),
 
-  PLAID_CLIENT_ID: z.string().optional(),
-  PLAID_SECRET: z.string().optional(),
-  PLAID_ENV: z.enum(['sandbox', 'development', 'production']).default('sandbox'),
-  PLAID_WEBHOOK_URL: z.string().url().optional(),
+  FINTOC_SECRET_KEY: z.string().min(1),
+  FINTOC_PUBLIC_KEY: z.string().min(1),
+  FINTOC_WEBHOOK_SECRET: z.string().optional(),
+  FINTOC_BASE_URL: z.string().url().default('https://api.fintoc.com/v1'),
 
   FIREBASE_PROJECT_ID: z.string().optional(),
   FIREBASE_CLIENT_EMAIL: z.string().optional(),
