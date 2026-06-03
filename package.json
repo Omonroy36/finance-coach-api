@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "AI-powered personal finance coach backend",
   "main": "dist/main.js",
+  "type":"module",
   "scripts": {
     "dev": "tsx watch src/main.ts",
     "dev:worker": "tsx watch src/workers/worker.main.ts",
