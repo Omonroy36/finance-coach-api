@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
 
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
@@ -12,8 +13,45 @@ if (process.env['NODE_ENV'] !== 'production') {
   globalForPrisma.prisma = prisma;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function withDeletedAtNull(args: unknown): Record<string, unknown> {
+  const safeArgs = isRecord(args) ? args : {};
+  const currentWhere = isRecord(safeArgs['where']) ? safeArgs['where'] : {};
+
+  return {
+    ...safeArgs,
+    where: {
+      ...currentWhere,
+      deletedAt: null,
+    },
+  };
+}
+
+function ensureDeletedAtNullWhenMissing(args: unknown): Record<string, unknown> {
+  const safeArgs = isRecord(args) ? args : {};
+  const currentWhere = isRecord(safeArgs['where']) ? safeArgs['where'] : {};
+
+  if (currentWhere['deletedAt'] !== undefined) {
+    return {
+      ...safeArgs,
+      where: currentWhere,
+    };
+  }
+
+  return {
+    ...safeArgs,
+    where: {
+      ...currentWhere,
+      deletedAt: null,
+    },
+  };
+}
+
 // Soft-delete middleware: automatically filter out deleted records
-prisma.$use(async (params, next) => {
+prisma.$use(async (params: Prisma.MiddlewareParams, next: Prisma.MiddlewareNext): Promise<unknown> => {
   const softDeleteModels = [
     'User',
     'FinancialAccount',
@@ -27,24 +65,14 @@ prisma.$use(async (params, next) => {
   if (params.model && softDeleteModels.includes(params.model)) {
     if (params.action === 'findUnique' || params.action === 'findFirst') {
       params.action = 'findFirst';
-      params.args = params.args ?? {};
-      params.args['where'] = {
-        ...((params.args['where'] as object) ?? {}),
-        deletedAt: null,
-      };
+      params.args = withDeletedAtNull(params.args);
     }
 
     if (params.action === 'findMany') {
-      params.args = params.args ?? {};
-      if (params.args['where']) {
-        if ((params.args['where'] as Record<string, unknown>)['deletedAt'] === undefined) {
-          (params.args['where'] as Record<string, unknown>)['deletedAt'] = null;
-        }
-      } else {
-        params.args['where'] = { deletedAt: null };
-      }
+      params.args = ensureDeletedAtNullWhenMissing(params.args);
     }
   }
 
-  return next(params);
+  const result = await next(params);
+  return result as unknown;
 });
