@@ -104,9 +104,9 @@ model FinancialAccount {
 model IntegrationConnection {
   id                   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   userId               String    @map("user_id") @db.Uuid
-  providerType         String    @map("provider_type") // "plaid" | "yodlee"
+  providerType         String    @map("provider_type") // "fintoc"
   encryptedAccessToken String    @map("encrypted_access_token")
-  // JSONB: { itemId, institutionId, consentExpiresAt, syncCursor, errorCode? }
+  // JSONB: { linkId, institutionId, institutionName, country, holderType, lastSyncedAt }
   metadata             Json      @default("{}") @db.JsonB
   status               String    @default("active") // "active" | "error" | "revoked"
   deletedAt            DateTime? @map("deleted_at") @db.Timestamptz
@@ -171,8 +171,8 @@ model Transaction {
   normalizedMerchant String?   @map("normalized_merchant")
   categoryId         String?   @map("category_id") @db.Uuid
   transactionDate    DateTime  @map("transaction_date") @db.Timestamptz
-  source             String    @default("manual") // "plaid" | "manual" | "import"
-  // JSONB: full provider payload (Plaid transaction object, CSV row, etc.)
+  source             String    @default("manual") // "fintoc" | "manual" | "import"
+  // JSONB: full provider payload (Fintoc movement object, CSV row, etc.)
   rawPayload         Json?     @map("raw_payload") @db.JsonB
   notes              String?
   isRecurring        Boolean   @default(false) @map("is_recurring")
