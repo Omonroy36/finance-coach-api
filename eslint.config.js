@@ -18,6 +18,13 @@ export default [
         ecmaVersion: 2022,
         sourceType: 'module',
       },
+      globals: {
+        console: 'readonly',
+        process: 'readonly',
+        Buffer: 'readonly',
+        URL: 'readonly',
+        URLSearchParams: 'readonly',
+      },
     },
     plugins: {
       '@typescript-eslint': typescriptEslintPlugin,
@@ -32,6 +39,7 @@ export default [
       '@typescript-eslint/explicit-function-return-type': 'off',
       '@typescript-eslint/no-floating-promises': 'error',
       '@typescript-eslint/await-thenable': 'error',
+      '@typescript-eslint/require-await': 'off',
       'no-console': ['warn', { allow: ['warn', 'error'] }],
     },
   },
