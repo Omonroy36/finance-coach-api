@@ -12,10 +12,13 @@ export const updateAccountSchema = z.object({
   type: z.enum(['checking', 'savings', 'credit', 'investment']).optional(),
 });
 
-export const plaidExchangeSchema = z.object({
-  publicToken: z.string().min(1),
-  institutionId: z.string().optional(),
-  institutionName: z.string().optional(),
+export const fintocCreateLinkIntentSchema = z.object({
+  country: z.enum(['cl', 'mx']).default('cl'),
+  holderType: z.enum(['individual', 'business']).default('individual'),
+});
+
+export const fintocExchangeSchema = z.object({
+  exchangeToken: z.string().min(1),
 });
 
 export const createCategorySchema = z.object({
@@ -29,5 +32,6 @@ export const updateCategorySchema = createCategorySchema.partial();
 
 export type CreateAccountInput = z.infer<typeof createAccountSchema>;
 export type UpdateAccountInput = z.infer<typeof updateAccountSchema>;
-export type PlaidExchangeInput = z.infer<typeof plaidExchangeSchema>;
+export type FintocCreateLinkIntentInput = z.infer<typeof fintocCreateLinkIntentSchema>;
+export type FintocExchangeInput = z.infer<typeof fintocExchangeSchema>;
 export type CreateCategoryInput = z.infer<typeof createCategorySchema>;
